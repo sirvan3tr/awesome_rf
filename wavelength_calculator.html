@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wavelength Calculator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            background-color: #f5f5f5;
+        }
+
+        .calculator {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        input[type="number"], select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        button {
+            background-color: #0066cc;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #0052a3;
+        }
+
+        .results {
+            margin-top: 2rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .results table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .results th, .results td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .results th {
+            background-color: #f1f1f1;
+            font-weight: bold;
+        }
+
+        .fraction {
+            width: 30%;
+        }
+
+        .length {
+            width: 70%;
+        }
+
+        .error {
+            color: #dc3545;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <h1>Wavelength Calculator</h1>
+        
+        <div class="input-group">
+            <label for="frequency">Frequency</label>
+            <input type="number" id="frequency" step="any" required>
+            <select id="frequency-unit">
+                <option value="hz">Hz</option>
+                <option value="khz">kHz</option>
+                <option value="mhz" selected>MHz</option>
+                <option value="ghz">GHz</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label for="output-unit">Output Unit</label>
+            <select id="output-unit">
+                <option value="m">Meters</option>
+                <option value="cm">Centimeters</option>
+                <option value="mm">Millimeters</option>
+                <option value="ft">Feet</option>
+                <option value="in">Inches</option>
+            </select>
+        </div>
+
+        <button onclick="calculateWavelength()">Calculate</button>
+
+        <div class="results" id="results" style="display: none;">
+            <h2>Results</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="fraction">Fraction</th>
+                        <th class="length">Length</th>
+                    </tr>
+                </thead>
+                <tbody id="results-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const SPEED_OF_LIGHT = 299792458; // meters per second
+
+        function calculateWavelength() {
+            const frequencyInput = document.getElementById('frequency');
+            const frequencyUnit = document.getElementById('frequency-unit');
+            const outputUnit = document.getElementById('output-unit');
+            const resultsDiv = document.getElementById('results');
+            const resultsBody = document.getElementById('results-body');
+
+            // Clear previous results
+            resultsBody.innerHTML = '';
+
+            // Get frequency in Hz
+            let frequency = parseFloat(frequencyInput.value);
+            if (isNaN(frequency) || frequency <= 0) {
+                alert('Please enter a valid frequency');
+                return;
+            }
+
+            // Convert frequency to Hz based on selected unit
+            switch (frequencyUnit.value) {
+                case 'ghz':
+                    frequency *= 1e9;
+                    break;
+                case 'mhz':
+                    frequency *= 1e6;
+                    break;
+                case 'khz':
+                    frequency *= 1e3;
+                    break;
+            }
+
+            // Calculate full wavelength in meters
+            const wavelengthMeters = SPEED_OF_LIGHT / frequency;
+
+            // Convert to desired output unit
+            const conversionFactors = {
+                'm': 1,
+                'cm': 100,
+                'mm': 1000,
+                'ft': 3.28084,
+                'in': 39.3701
+            };
+
+            const unitSymbols = {
+                'm': 'meters',
+                'cm': 'centimeters',
+                'mm': 'millimeters',
+                'ft': 'feet',
+                'in': 'inches'
+            };
+
+            // Calculate different fractions of wavelength
+            const fractions = [
+                { fraction: "Full", divisor: 1 },
+                { fraction: "1/2", divisor: 2 },
+                { fraction: "1/4", divisor: 4 },
+                { fraction: "1/8", divisor: 8 },
+                { fraction: "5/8", divisor: 1.6 },
+                { fraction: "3/4", divisor: 1.333333 }
+            ];
+
+            fractions.forEach(({ fraction, divisor }) => {
+                const length = wavelengthMeters / divisor * conversionFactors[outputUnit.value];
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${fraction} wavelength</td>
+                    <td>${length.toFixed(3)} ${unitSymbols[outputUnit.value]}</td>
+                `;
+                resultsBody.appendChild(row);
+            });
+
+            resultsDiv.style.display = 'block';
+        }
+
+        // Add event listeners for Enter key
+        document.getElementById('frequency').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculateWavelength();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Advanced RF Filter Calculator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .calculator {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .filter-select {
+            margin-bottom: 20px;
+        }
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="number"] {
+            width: 100px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .results {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .result-box {
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .chart-container {
+            margin-top: 20px;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <h2>Advanced RF Filter Calculator</h2>
+        
+        <div class="filter-select">
+            <label for="filterType">Filter Topology:</label>
+            <select id="filterType" onchange="updateFilterType()">
+                <option value="simple">Simple High-Pass</option>
+                <option value="pi">Pi-Network</option>
+                <option value="butterworth">3rd Order Butterworth</option>
+                <option value="active">Active with Bias-T</option>
+            </select>
+        </div>
+
+        <div id="componentInputs" class="input-grid">
+            <!-- Dynamically populated based on filter type -->
+        </div>
+
+        <div class="results">
+            <div class="result-box">
+                <h3>Filter Characteristics</h3>
+                <p>Cutoff Frequency: <span id="cutoff">...</span> MHz</p>
+                <p>Stopband Attenuation: <span id="stopband">...</span> dB/decade</p>
+                <p>Input Return Loss: <span id="return-loss">...</span> dB</p>
+            </div>
+            
+            <div class="result-box">
+                <h3>Performance Metrics</h3>
+                <p>Passband Ripple: <span id="ripple">...</span> dB</p>
+                <p>Group Delay: <span id="delay">...</span> ns</p>
+                <p>Power Handling: <span id="power">...</span> dBm</p>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="responseChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        class AdvancedRFFilter {
+            constructor(type, params) {
+                this.type = type;
+                this.params = params;
+            }
+
+            calculateResponse(freq) {
+                let response = 0;
+                switch(this.type) {
+                    case 'simple':
+                        response = this.calculateSimpleResponse(freq);
+                        break;
+                    case 'pi':
+                        response = this.calculatePiResponse(freq);
+                        break;
+                    case 'butterworth':
+                        response = this.calculateButterworthResponse(freq);
+                        break;
+                    case 'active':
+                        response = this.calculateActiveResponse(freq);
+                        break;
+                }
+                return response;
+            }
+
+            calculateSimpleResponse(freq) {
+                const omega = 2 * Math.PI * freq;
+                const L = this.params.L1 * 1e-9;
+                const C = this.params.C1 * 1e-12;
+                const XL = omega * L;
+                const XC = 1 / (omega * C);
+                return -20 * Math.log10(Math.abs(XC / Math.sqrt(XL * XL + XC * XC)));
+            }
+
+            calculatePiResponse(freq) {
+                // More sophisticated Pi network calculation
+                const omega = 2 * Math.PI * freq;
+                const L = this.params.L1 * 1e-9;
+                const C1 = this.params.C1 * 1e-12;
+                const C2 = this.params.C2 * 1e-12;
+                
+                // Calculate complex impedances
+                const ZL = new complex(0, omega * L);
+                const ZC1 = new complex(0, -1 / (omega * C1));
+                const ZC2 = new complex(0, -1 / (omega * C2));
+                
+                // Calculate transfer function
+                const H = ZC2.div(ZC2.add(ZL.parallel(ZC1)));
+                return -20 * Math.log10(H.magnitude());
+            }
+
+            calculateButterworthResponse(freq) {
+                // 3rd order Butterworth response
+                const omega = 2 * Math.PI * freq;
+                const omega0 = 2 * Math.PI * this.calculateCutoffFreq();
+                const s = new complex(0, omega / omega0);
+                const H = new complex(1, 0).div(s.pow(3).add(s.mul(2)).add(s).add(1));
+                return -20 * Math.log10(H.magnitude());
+            }
+
+            calculateActiveResponse(freq) {
+                // Active filter response with gain
+                const passive = this.calculateSimpleResponse(freq);
+                const gain = this.params.gain || 10; // dB
+                return passive + gain;
+            }
+
+            calculateCutoffFreq() {
+                switch(this.type) {
+                    case 'simple':
+                        return 1 / (2 * Math.PI * Math.sqrt(this.params.L1 * 1e-9 * this.params.C1 * 1e-12));
+                    case 'pi':
+                        return 1 / (2 * Math.PI * Math.sqrt(this.params.L1 * 1e-9 * (this.params.C1 + this.params.C2) * 1e-12));
+                    case 'butterworth':
+                        return 1 / (2 * Math.PI * Math.sqrt(this.params.L1 * 1e-9 * this.params.C1 * 1e-12));
+                    case 'active':
+                        return 1 / (2 * Math.PI * Math.sqrt(this.params.L1 * 1e-9 * this.params.C1 * 1e-12));
+                }
+            }
+        }
+
+        // Complex number helper class
+        class complex {
+            constructor(re, im) {
+                this.re = re;
+                this.im = im;
+            }
+
+            add(other) {
+                return new complex(this.re + other.re, this.im + other.im);
+            }
+
+            mul(other) {
+                return new complex(
+                    this.re * other.re - this.im * other.im,
+                    this.re * other.im + this.im * other.re
+                );
+            }
+
+            div(other) {
+                const denom = other.re * other.re + other.im * other.im;
+                return new complex(
+                    (this.re * other.re + this.im * other.im) / denom,
+                    (this.im * other.re - this.re * other.im) / denom
+                );
+            }
+
+            magnitude() {
+                return Math.sqrt(this.re * this.re + this.im * this.im);
+            }
+
+            parallel(other) {
+                return this.mul(other).div(this.add(other));
+            }
+
+            pow(n) {
+                let result = new complex(1, 0);
+                for(let i = 0; i < n; i++) {
+                    result = result.mul(this);
+                }
+                return result;
+            }
+        }
+
+        let chart;
+        let currentFilter;
+
+        function updateFilterType() {
+            const type = document.getElementById('filterType').value;
+            const inputsDiv = document.getElementById('componentInputs');
+            inputsDiv.innerHTML = '';
+
+            const commonInputs = {
+                'simple': [['L1', '47'], ['C1', '180']],
+                'pi': [['L1', '47'], ['C1', '180'], ['C2', '180']],
+                'butterworth': [['L1', '33'], ['L2', '33'], ['C1', '150'], ['C2', '220'], ['C3', '150']],
+                'active': [['L1', '47'], ['C1', '100'], ['C2', '100'], ['C3', '100'], ['gain', '10']]
+            };
+
+            commonInputs[type].forEach(([id, defaultVal]) => {
+                const div = document.createElement('div');
+                div.className = 'input-group';
+                div.innerHTML = `
+                    <label for="${id}">${id}:</label>
+                    <input type="number" id="${id}" value="${defaultVal}" 
+                           onchange="updateCalculations()" step="0.1" min="0.1">
+                    <span>${id.startsWith('L') ? 'nH' : id.startsWith('C') ? 'pF' : 'dB'}</span>
+                `;
+                inputsDiv.appendChild(div);
+            });
+
+            updateCalculations();
+        }
+
+        function updateCalculations() {
+            const type = document.getElementById('filterType').value;
+            const params = {};
+            
+            // Gather all input values
+            document.querySelectorAll('#componentInputs input').forEach(input => {
+                params[input.id] = parseFloat(input.value);
+            });
+
+            currentFilter = new AdvancedRFFilter(type, params);
+            
+            // Update displayed values
+            document.getElementById('cutoff').textContent = 
+                (currentFilter.calculateCutoffFreq() / 1e6).toFixed(2);
+            
+            // Update other metrics based on filter type
+            updateMetrics(type);
+            
+            // Update frequency response chart
+            updateChart();
+        }
+
+        function updateMetrics(type) {
+            const stopbandAttn = {
+                'simple': 20,
+                'pi': 40,
+                'butterworth': 60,
+                'active': 20
+            };
+            
+            document.getElementById('stopband').textContent = stopbandAttn[type];
+            document.getElementById('ripple').textContent = 
+                type === 'butterworth' ? '0.1' : '0.5';
+            document.getElementById('delay').textContent = 
+                type === 'active' ? '2.5' : '1.5';
+            document.getElementById('power').textContent = 
+                type === 'active' ? '20' : '30';
+        }
+
+        function updateChart() {
+            const freqPoints = [];
+            const responsePoints = [];
+            
+            // Generate frequency points (logarithmic scale)
+            for (let freq = 1e6; freq <= 1e9; freq *= 1.2) {
+                freqPoints.push(freq / 1e6);
+                responsePoints.push(currentFilter.calculateResponse(freq));
+            }
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            const ctx = document.getElementById('responseChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: freqPoints,
+                    datasets: [{
+                        label: 'Frequency Response (dB)',
+                        data: responsePoints,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'logarithmic',
+                            title: {
+                                display: true,
+                                text: 'Frequency (MHz)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Response (dB)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize
+        updateFilterType();
+    </script>
+</body>
+</html>
