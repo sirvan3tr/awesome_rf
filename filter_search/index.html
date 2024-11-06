@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RF Filter Explorer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .file-upload {
+            text-align: center;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+
+        .file-input {
+            margin-bottom: 10px;
+        }
+
+        .upload-info {
+            color: #666;
+            margin: 5px 0;
+        }
+
+        .error-message {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .controls {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .slider-container {
+            margin: 15px 0;
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex-grow: 1;
+        }
+
+        input[type="number"] {
+            width: 80px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .table-container {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+    .tooltip {
+        position: absolute;
+        background-color: #333;
+        color: #fff;
+        padding: 5px;
+        border-radius: 5px;
+        display: none;
+        pointer-events: none;
+        transform: translate(-50%, -100%);
+    }
+    </style>
+</head>
+<body>
+    <h1>RF Filter Explorer</h1>
+    
+    <div class="file-upload">
+        <input type="file" id="csvFile" accept=".csv,.txt" class="file-input">
+        <p class="upload-info">Upload a tab-delimited CSV file containing RF filter data</p>
+    </div>
+
+    <div class="controls" style="display: none;">
+        <div class="slider-container">
+            <label>Passband F1 (MHz):</label>
+            <div class="slider-group">
+                <input type="range" id="f1Slider" min="0" max="1000" step="1" oninput="updateF1Value(event)">
+                <input type="number" id="f1Value" min="0" max="1000" oninput="syncF1Slider()">
+                <span id="f1Tooltip" class="tooltip">0 MHz</span>
+            </div>
+        </div>
+    
+        <div class="slider-container">
+            <label>Passband F2 (MHz):</label>
+            <div class="slider-group">
+                <input type="range" id="f2Slider" min="0" max="2000" step="1" oninput="updateF2Value(event)">
+                <input type="number" id="f2Value" min="0" max="2000" oninput="syncF2Slider()">
+                <span id="f2Tooltip" class="tooltip">0 MHz</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table id="filterTable">
+            <thead>
+                <tr>
+                    <th>Model Number</th>
+                    <th>Description</th>
+                    <th>Passband F1 (MHz)</th>
+                    <th>Passband F2 (MHz)</th>
+                    <th>Interface</th>
+                    <th>Technology</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+            function updateF1Value(event) {
+        const f1Slider = document.getElementById('f1Slider');
+        const f1Value = document.getElementById('f1Value');
+        const f1Tooltip = document.getElementById('f1Tooltip');
+        f1Value.value = f1Slider.value;
+        f1Tooltip.textContent = f1Slider.value + ' MHz';
+        showTooltip(event, f1Tooltip);
+    }
+
+    function syncF1Slider() {
+        const f1Slider = document.getElementById('f1Slider');
+        const f1Value = document.getElementById('f1Value');
+        const f1Tooltip = document.getElementById('f1Tooltip');
+        f1Slider.value = f1Value.value;
+        f1Tooltip.textContent = f1Value.value + ' MHz';
+    }
+
+    function updateF2Value(event) {
+        const f2Slider = document.getElementById('f2Slider');
+        const f2Value = document.getElementById('f2Value');
+        const f2Tooltip = document.getElementById('f2Tooltip');
+        f2Value.value = f2Slider.value;
+        f2Tooltip.textContent = f2Slider.value + ' MHz';
+        showTooltip(event, f2Tooltip);
+    }
+
+    function syncF2Slider() {
+        const f2Slider = document.getElementById('f2Slider');
+        const f2Value = document.getElementById('f2Value');
+        const f2Tooltip = document.getElementById('f2Tooltip');
+        f2Slider.value = f2Value.value;
+        f2Tooltip.textContent = f2Value.value + ' MHz';
+    }
+
+    function showTooltip(event, tooltip) {
+        tooltip.style.display = 'block';
+        tooltip.style.left = event.pageX + 'px';
+        tooltip.style.top = event.pageY + 'px';
+    }
+
+    document.addEventListener('mousemove', function(event) {
+        const tooltips = document.querySelectorAll('.tooltip');
+        tooltips.forEach(tooltip => {
+            if (tooltip.style.display === 'block') {
+                tooltip.style.left = event.pageX + 'px';
+                tooltip.style.top = event.pageY + 'px';
+            }
+        });
+    });
+
+    document.addEventListener('mouseout', function(event) {
+        const tooltips = document.querySelectorAll('.tooltip');
+        tooltips.forEach(tooltip => {
+            tooltip.style.display = 'none';
+        });
+    });
+    
+        // Initialize empty filter data array
+        let filterData = [];
+
+        // Function to process uploaded file
+        function handleFileUpload(file) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const result = Papa.parse(e.target.result, {
+                        header: true,
+                        delimiter: '\t', // Set delimiter to tab
+                        dynamicTyping: true,
+                        skipEmptyLines: true
+                    });
+                    
+                    if (result.errors.length > 0) {
+                        throw new Error('Error parsing CSV: ' + result.errors[0].message);
+                    }
+
+                    filterData = result.data.map(row => ({
+                        modelNumber: row['Model Number'],
+                        description: row['Description'],
+                        f1: row['Passband F1 (MHz)'],
+                        f2: row['Passband F2 (MHz)'],
+                        interface: row['Interface'],
+                        technology: row['Technology']
+                    }));
+
+                    // Show controls after successful upload
+                    document.querySelector('.controls').style.display = 'block';
+                    
+                    // Update slider ranges after loading data
+                    const maxF1 = Math.max(...filterData.map(filter => filter.f1));
+                    const maxF2 = Math.max(...filterData.map(filter => filter.f2));
+                    
+                    f1Slider.max = maxF1;
+                    f2Slider.max = maxF2;
+                    f1Value.max = maxF1;
+                    f2Value.max = maxF2;
+                    
+                    // Set initial values
+                    f1Slider.value = 0;
+                    f2Slider.value = maxF2;
+                    f1Value.value = 0;
+                    f2Value.value = maxF2;
+                    
+                    // Initial table population
+                    updateTable();
+
+                    // Hide any previous error messages
+                    // document.querySelector('.error-message')?.style.display = 'none';
+                } catch (error) {
+                    console.error('Error processing file:', error);
+                    showError('Error processing file: ' + error.message);
+                }
+            };
+
+            reader.onerror = function() {
+                showError('Error reading file');
+            };
+
+            reader.readAsText(file);
+        }
+
+        // Function to show error messages
+        function showError(message) {
+            let errorDiv = document.querySelector('.error-message');
+            if (!errorDiv) {
+                errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                document.querySelector('.file-upload').appendChild(errorDiv);
+            }
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // Event listener for file upload
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (file.size > 5000000) { // 5MB limit
+                    showError('File is too large. Please upload a file smaller than 5MB.');
+                    this.value = ''; // Clear the file input
+                    return;
+                }
+                handleFileUpload(file);
+            }
+        });
+
+        // Get DOM elements
+        const f1Slider = document.getElementById('f1Slider');
+        const f2Slider = document.getElementById('f2Slider');
+        const f1Value = document.getElementById('f1Value');
+        const f2Value = document.getElementById('f2Value');
+        const tableBody = document.querySelector('#filterTable tbody');
+
+        // Set initial values
+        const maxF1 = Math.max(...filterData.map(filter => filter.f1));
+        const maxF2 = Math.max(...filterData.map(filter => filter.f2));
+        
+        f1Slider.max = maxF1;
+        f2Slider.max = maxF2;
+        f1Value.max = maxF1;
+        f2Value.max = maxF2;
+
+        f1Slider.value = 0;
+        f2Slider.value = maxF2;
+        f1Value.value = 0;
+        f2Value.value = maxF2;
+
+        // Update functions
+        function updateTable() {
+            const f1Min = Number(f1Slider.value);
+            const f2Max = Number(f2Slider.value);
+
+            // Clear table
+            tableBody.innerHTML = '';
+
+            // Filter and display data
+            filterData.filter(filter => 
+                filter.f1 >= f1Min && filter.f2 <= f2Max
+            ).forEach(filter => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${filter.modelNumber}</td>
+                    <td>${filter.description}</td>
+                    <td>${filter.f1}</td>
+                    <td>${filter.f2}</td>
+                    <td>${filter.interface}</td>
+                    <td>${filter.technology}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Event listeners
+        f1Slider.addEventListener('input', (e) => {
+            f1Value.value = e.target.value;
+            updateTable();
+        });
+
+        f2Slider.addEventListener('input', (e) => {
+            f2Value.value = e.target.value;
+            updateTable();
+        });
+
+        f1Value.addEventListener('input', (e) => {
+            f1Slider.value = e.target.value;
+            updateTable();
+        });
+
+        f2Value.addEventListener('input', (e) => {
+            f2Slider.value = e.target.value;
+            updateTable();
+        });
+
+        // Initial table population
+        updateTable();
+    </script>
+</body>
+</html>
