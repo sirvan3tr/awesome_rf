@@ -51,6 +51,19 @@
             background-color: #2c5282;
             color: white;
         }
+        .terms {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .term {
+            margin: 10px 0;
+        }
+        .term-symbol {
+            font-weight: bold;
+            color: #2c5282;
+        }
     </style>
 </head>
 <body>
@@ -59,6 +72,28 @@
     <div class="equation">
         \[R_{\text{max}} = \sqrt[4]{\frac{P_t G^2 \lambda^2 \sigma}{P_{\text{min}}(4\pi)^3}}\]
         where \[\lambda = \frac{c}{f}\]
+    </div>
+
+    <div class="terms">
+        <h3>Terms Explained:</h3>
+        <div class="term">
+            <span class="term-symbol">Rₘₐₓ</span>: Maximum detection range in meters
+        </div>
+        <div class="term">
+            <span class="term-symbol">Pₜ</span>: Transmitted power - the power output of the radar transmitter
+        </div>
+        <div class="term">
+            <span class="term-symbol">G</span>: Antenna gain - measure of the antenna's ability to direct power in a given direction
+        </div>
+        <div class="term">
+            <span class="term-symbol">λ</span>: Wavelength - distance between wave peaks (λ = c/f, where c is speed of light and f is frequency)
+        </div>
+        <div class="term">
+            <span class="term-symbol">σ</span>: Radar cross-section - measure of target's ability to reflect radar signals back to receiver
+        </div>
+        <div class="term">
+            <span class="term-symbol">Pₘᵢₙ</span>: Minimum detectable power - smallest signal power that can be reliably detected
+        </div>
     </div>
 
     <div class="toggle-group">
@@ -120,18 +155,23 @@
         }
 
         function calculateRange() {
-            const pt = Math.pow(10, (parseFloat(document.getElementById('pt').value) - 30) / 10);
-            const gain = Math.pow(10, parseFloat(document.getElementById('gain').value) / 10);
-            const wavelength = getWavelength();
-            const rcs = parseFloat(document.getElementById('rcs').value);
-            const pmin = Math.pow(10, (parseFloat(document.getElementById('pmin').value) - 30) / 10);
+            try {
+                const pt = Math.pow(10, (parseFloat(document.getElementById('pt').value) - 30) / 10);
+                const gain = Math.pow(10, parseFloat(document.getElementById('gain').value) / 10);
+                const wavelength = getWavelength();
+                const rcs = parseFloat(document.getElementById('rcs').value);
+                const pmin = Math.pow(10, (parseFloat(document.getElementById('pmin').value) - 30) / 10);
 
-            const numerator = pt * Math.pow(gain, 2) * Math.pow(wavelength, 2) * rcs;
-            const denominator = pmin * Math.pow(4 * Math.PI, 3);
-            const range = Math.pow(numerator / denominator, 1/4);
+                const numerator = pt * Math.pow(gain, 2) * Math.pow(wavelength, 2) * rcs;
+                const denominator = pmin * Math.pow(4 * Math.PI, 3);
+                const range = Math.pow(numerator / denominator, 1/4);
 
-            document.getElementById('result').innerHTML = 
-                `Maximum radar range: ${range.toFixed(2)} meters`;
+                document.getElementById('result').innerHTML = 
+                    `Maximum radar range: ${range.toFixed(2)} meters`;
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    `Error: Please check all input values are valid numbers`;
+            }
         }
 
         window.onload = function() {
