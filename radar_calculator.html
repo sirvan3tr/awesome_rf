@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .calculator {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 200px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+        .result-item {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <h2>Radar Performance Calculator</h2>
+        
+        <div class="input-group">
+            <label>Frequency (GHz):</label>
+            <input type="number" id="frequency" value="77">
+        </div>
+        
+        <div class="input-group">
+            <label>Transmit Power (dBm):</label>
+            <input type="number" id="txPower" value="20">
+        </div>
+        
+        <div class="input-group">
+            <label>Antenna Gain (dBi):</label>
+            <input type="number" id="antennaGain" value="25">
+        </div>
+        
+        <div class="input-group">
+            <label>Target RCS (m²):</label>
+            <input type="number" id="rcs" value="1">
+        </div>
+        
+        <div class="input-group">
+            <label>Range (m):</label>
+            <input type="number" id="range" value="500">
+        </div>
+        
+        <div class="input-group">
+            <label>System Losses (dB):</label>
+            <input type="number" id="losses" value="6">
+        </div>
+        
+        <div class="input-group">
+            <label>Noise Figure (dB):</label>
+            <input type="number" id="noiseFigure" value="8">
+        </div>
+        
+        <button onclick="calculateRadarPerformance()">Calculate</button>
+        
+        <div id="results">
+            <h3>Results:</h3>
+            <div id="resultsList"></div>
+        </div>
+    </div>
+
+    <script>
+        function calculateRadarPerformance() {
+            // Get input values
+            const frequency = parseFloat(document.getElementById('frequency').value);
+            const txPower = parseFloat(document.getElementById('txPower').value);
+            const antennaGain = parseFloat(document.getElementById('antennaGain').value);
+            const rcs = parseFloat(document.getElementById('rcs').value);
+            const range = parseFloat(document.getElementById('range').value);
+            const losses = parseFloat(document.getElementById('losses').value);
+            const noiseFigure = parseFloat(document.getElementById('noiseFigure').value);
+
+            // Constants
+            const c = 3e8; // Speed of light
+            const k = 1.38e-23; // Boltzmann constant
+            const T0 = 290; // Reference temperature in Kelvin
+
+            // Calculations
+            const wavelength = c / (frequency * 1e9);
+            
+            // Path loss (two-way)
+            const pathLoss = Math.pow((4 * Math.PI * range) / wavelength, 4);
+            const pathLossDB = 10 * Math.log10(pathLoss);
+
+            // Received power
+            const pTx = Math.pow(10, txPower/10) / 1000; // Convert dBm to Watts
+            const gainLinear = Math.pow(10, antennaGain/10);
+            const pRx = (pTx * Math.pow(gainLinear, 2) * wavelength * wavelength * rcs) / 
+                       (Math.pow(4 * Math.PI, 3) * Math.pow(range, 4));
+            const pRxDBm = 10 * Math.log10(pRx * 1000);
+
+            // Noise power
+            const noisePower = k * T0 * 1e9; // Bandwidth assumed 1 GHz
+            const noisePowerDBm = 10 * Math.log10(noisePower * 1000) + noiseFigure;
+
+            // SNR
+            const snr = pRxDBm - noisePowerDBm - losses;
+
+            // Maximum range
+            const snrMin = 13; // Minimum SNR for detection
+            const rMax = range * Math.pow(10, (snr - snrMin)/(40));
+
+            // Display results
+            const resultsList = document.getElementById('resultsList');
+            resultsList.innerHTML = `
+                <div class="result-item">Wavelength: ${(wavelength * 1000).toFixed(2)} mm</div>
+                <div class="result-item">Path Loss: ${pathLossDB.toFixed(1)} dB</div>
+                <div class="result-item">Received Power: ${pRxDBm.toFixed(1)} dBm</div>
+                <div class="result-item">Noise Power: ${noisePowerDBm.toFixed(1)} dBm</div>
+                <div class="result-item">SNR: ${snr.toFixed(1)} dB</div>
+                <div class="result-item">Maximum Detection Range: ${rMax.toFixed(1)} m</div>
+            `;
+        }
+
+        // Initial calculation
+        calculateRadarPerformance();
+    </script>
+</body>
+</html>
